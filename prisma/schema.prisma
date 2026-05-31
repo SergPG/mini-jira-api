@@ -4,9 +4,110 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id        String @id @default(uuid())
+  email     String   @unique
+  name      String?
+
+  projects  ProjectMember[]
+  tasks     Task[] @relation("AssignedTasks")
+
+  comments  Comment[]
+
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model Project {
+  id          String @id @default(uuid())
+  name        String
+  key         String @unique // e.g. "JIRA", "WEB"
+
+  tasks       Task[]
+  members     ProjectMember[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  userId    String
+  projectId String
+
+  user      User    @relation(fields: [userId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id])
+
+  role      ProjectRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, projectId])
+  @@map("project_members")
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Task {
+  id          String @id @default(uuid())
+
+  title       String
+  description String?
+
+  status      TaskStatus @default(TODO)
+
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id])
+
+  assigneeId  String?
+  assignee    User? @relation("AssignedTasks", fields: [assigneeId], references: [id])
+
+  comments    Comment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([status])
+
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Comment {
+  id        String @id @default(uuid())
+
+  content   String
+
+  taskId    String
+  task      Task @relation(fields: [taskId], references: [id])
+
+  authorId  String
+  author    User @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("comments")
 }
